@@ -32,7 +32,4 @@ specific constraints on hotel selection, pricing, coupons, GST, and budget.
 - GST is applied after discounts
 - Budget is checked after all charges
 
-## How to Run
-1. Install dependencies: `npm install`
-2. Start app: `npx expo start`
-3. Run on Expo Go or web
+
