@@ -11,13 +11,11 @@ export function calculateFinalBill({
 }) {
 const baseAmount = nightsCount * APP_CONFIG.pricing.pricePerNight;
 
-  // Apply 20% discount per coupon
   let discountedAmount = baseAmount;
   for (let i = 0; i < couponsApplied; i++) {
     discountedAmount = discountedAmount * (1 - APP_CONFIG.coupon.discount);
   }
 
-  // GST only if final > 999
   const gst =
     discountedAmount > 999
       ? discountedAmount * APP_CONFIG.pricing.gstRate
