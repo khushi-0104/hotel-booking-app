@@ -1,150 +1,258 @@
 import { useState } from "react";
-import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { APP_CONFIG } from "./src/config/appConfig";
-import { generateWeeklyBooking } from "./src/logic/bookingLogic";
-import { calculateFinalBill } from "./src/logic/pricingLogic";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { hotels } from "./src/data/hotels";
+
+const VALID_COUPON = "FRANTIGER2026";
+const DISCOUNT_RATE = 0.2;
+const GST_RATE = 0.18;
 
 export default function Index() {
-  const [nights, setNights] = useState<any[]>([]);
+  const TOTAL_NIGHTS = 7;
+
   const [location, setLocation] = useState("");
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
-  const [people, setPeople] = useState("2");
+  const [people, setPeople] = useState("");
   const [budget, setBudget] = useState("");
 
-  const [showResults, setShowResults] = useState(false);
-  const [couponCode, setCouponCode] = useState("");
-  const [couponsApplied, setCouponsApplied] = useState(0);
-  const [bill, setBill] = useState<any>(null);
+  const [currentNight, setCurrentNight] = useState(0);
+  const [couponCount, setCouponCount] = useState(0);
+  const [couponInput, setCouponInput] = useState("");
+  const [totalBill, setTotalBill] = useState(0);
 
-  function handleCoupon() {
-    if (couponsApplied < APP_CONFIG.coupon.maxUses) {
-      const nextCount = couponsApplied + 1;
-      const res = calculateFinalBill({
-        nightsCount: nights.length,
-        couponsApplied: nextCount,
-        budget: Number(budget),
-      });
-      setCouponsApplied(nextCount);
-      setBill(res);
-    }
+  const [nightsData, setNightsData] = useState(
+    Array.from({ length: TOTAL_NIGHTS }, (_, i) => ({
+      night: i + 1,
+      hotel: null as any,
+      originalPrice: 0,
+      discountedPrice: 0,
+      couponApplied: false,
+    }))
+  );
+
+  function handleSelectHotel(hotel: any) {
+    if (currentNight === 0) return;
+
+    setNightsData((prev) => {
+      const updated = [...prev];
+      const idx = currentNight - 1;
+      const prevHotel = updated[idx].hotel;
+
+      if (prevHotel) {
+        const prevPrice = updated[idx].couponApplied
+          ? updated[idx].discountedPrice
+          : updated[idx].originalPrice;
+        setTotalBill((b) => b - prevPrice);
+      }
+
+      updated[idx].hotel = hotel;
+      updated[idx].originalPrice = hotel.price;
+      updated[idx].discountedPrice = hotel.price;
+      updated[idx].couponApplied = false;
+
+      setTotalBill((b) => b + hotel.price);
+      return updated;
+    });
   }
 
+  function handleApplyCoupon() {
+    if (couponCount >= 3) return;
+    if (couponInput !== VALID_COUPON) return;
+
+    setNightsData((prev) => {
+      const updated = [...prev];
+      const idx = currentNight - 1;
+      const night = updated[idx];
+
+      if (!night.hotel || night.couponApplied) return prev;
+
+      const discount = night.originalPrice * DISCOUNT_RATE;
+      night.discountedPrice = night.originalPrice - discount;
+      night.couponApplied = true;
+
+      setTotalBill((b) => b - discount);
+      setCouponCount((c) => c + 1);
+      return updated;
+    });
+  }
+
+  const subtotal = totalBill;
+  const gst = subtotal * GST_RATE;
+  const finalAmount = subtotal + gst;
+
+  const numericBudget = Number(budget);
+  const isBudgetExceeded =
+    numericBudget > 0 && finalAmount > numericBudget;
+
   return (
-    <ScrollView style={{ backgroundColor: "#CCC7D2" }}>
-      <View style={{ backgroundColor: "#000075", padding: 30 }}>
-        <Text style={{ color: "white", fontSize: 40, fontWeight: "bold" }}>My Hotel App</Text>
-        <Text style={{ color: "white" }}>Plan your trip with us</Text>
+    <ScrollView style={{ backgroundColor: "#EEE" }}>
+      <View style={{ backgroundColor: "#000075", padding: 25 }}>
+        <Text style={{ color: "white", fontSize: 28, fontWeight: "bold" }}>
+          My Hotel App
+        </Text>
+        <Text style={{ color: "white" }}>
+          MakeMyTrip-style Booking
+        </Text>
       </View>
 
       <View style={{ padding: 15 }}>
-        <View style={{ backgroundColor: "white", padding: 10, borderRadius: 10 }}>
-          <Text>Vacation Incoming....🏝️</Text>
-          <TextInput 
-            style={{ borderBottomWidth: 1, 
-              marginTop:10, marginBottom: 20 }} 
-            value={location} 
-            onChangeText={setLocation} 
-            placeholder="Location:"
+        <View style={{ backgroundColor: "white", padding: 15, borderRadius: 10 }}>
+          <Text style={{ fontWeight: "bold" }}>Trip Details</Text>
+
+          <TextInput
+            placeholder="Location"
+            value={location}
+            onChangeText={setLocation}
+            style={{ borderBottomWidth: 1, marginVertical: 10 }}
           />
 
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-             <TextInput 
-              placeholder="Check-in" 
-              style={{ borderBottomWidth: 1, width: "45%" }} 
-              value={checkIn} 
-              onChangeText={setCheckIn} 
-             />
-             <TextInput 
-              placeholder="Check-out" 
-              style={{ borderBottomWidth: 1, width: "45%" }} 
-              value={checkOut} 
-              onChangeText={setCheckOut} 
-             />
+            <TextInput
+              placeholder="Check-in"
+              value={checkIn}
+              onChangeText={setCheckIn}
+              style={{ borderBottomWidth: 1, width: "45%" }}
+            />
+            <TextInput
+              placeholder="Check-out"
+              value={checkOut}
+              onChangeText={setCheckOut}
+              style={{ borderBottomWidth: 1, width: "45%" }}
+            />
           </View>
 
-          <Text style={{ marginTop: 20 }}>No. of Guest:</Text>
-          <TextInput 
-            keyboardType="numeric" 
-            style={{ borderBottomWidth: 1 }} 
-            value={people} 
-            onChangeText={setPeople} 
+          <TextInput
+            placeholder="Guests"
+            value={people}
+            onChangeText={setPeople}
+            keyboardType="numeric"
+            style={{ borderBottomWidth: 1, marginTop: 15 }}
           />
 
-          <Text style={{ marginTop: 20 }}>Your Budget (Rs.)</Text>
-          <TextInput 
-            keyboardType="numeric" 
-            style={{ borderBottomWidth: 1 }} 
-            value={budget} 
-            onChangeText={setBudget} 
+          <TextInput
+            placeholder="Budget"
+            value={budget}
+            onChangeText={setBudget}
+            keyboardType="numeric"
+            style={{ borderBottomWidth: 1, marginTop: 15 }}
           />
 
           <Pressable
+            style={{ marginTop: 20, backgroundColor: "#008000", padding: 10 }}
             onPress={() => {
-              const data = generateWeeklyBooking();
-              setNights(data);
-              setShowResults(true);
-              setCouponsApplied(0);
-              const b = calculateFinalBill({ 
-                nightsCount: data.length, 
-                couponsApplied: 0, 
-                budget: Number(budget) 
-              });
-              setBill(b);
+              setCurrentNight(1);
+              setTotalBill(0);
+              setCouponCount(0);
+              setCouponInput("");
             }}
-            style={{ backgroundColor: "#000075", padding: 10, marginTop: 15, borderRadius: 5 }}
           >
-            <Text style={{ textAlign: "center", color: "white", fontWeight: "bold" }}>SEARCH NOW</Text>
+            <Text style={{ color: "white", textAlign: "center" }}>
+              SEARCH NOW
+            </Text>
           </Pressable>
         </View>
+      </View>
 
-        {showResults && (
-          <View style={{ marginTop: 20 }}>
-            <Image 
-              source={{ uri: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500' }} 
-              style={{ width: "100%", height: 150, borderRadius: 10 }}
-            />
+      {currentNight > 0 && currentNight <= TOTAL_NIGHTS && (
+        <View style={{ padding: 20 }}>
+          <Text style={{ fontSize: 18, fontWeight: "bold" }}>
+            Night {currentNight} / {TOTAL_NIGHTS}
+          </Text>
 
-            <Text style={{ fontSize: 20, marginVertical: 10 }}>Results for {location}:</Text>
+          {hotels.map((hotel) => {
+            const prevHotel =
+              currentNight > 1 ? nightsData[currentNight - 2].hotel : null;
+            const disabled = prevHotel?.id === hotel.id;
 
-            <View style={{ backgroundColor: "white", padding: 10, borderRadius: 5 }}>
-              {nights.map((n, i) => (
-                <Text key={i} style={{ marginBottom: 5 }}>-🏨Night {n.night}: {n.hotel.name}</Text>
-              ))}
-            </View>
-
-            <View style={{ marginVertical: 15, flexDirection: "row" }}>
-              <TextInput 
-                placeholder="Coupon here" 
-                style={{ backgroundColor: "white", flex: 1, padding: 5, borderWidth: 1 }} 
-                value={couponCode} 
-                onChangeText={setCouponCode}
-              />
-              <Pressable 
-                onPress={handleCoupon} 
-                style={{ backgroundColor: "#008000", padding: 10 }}
+            return (
+              <Pressable
+                key={hotel.id}
+                disabled={disabled}
+                onPress={() => handleSelectHotel(hotel)}
+                style={{
+                  backgroundColor: "white",
+                  padding: 12,
+                  borderRadius: 8,
+                  marginTop: 10,
+                  opacity: disabled ? 0.4 : 1,
+                }}
               >
-                <Text style={{ color: "white" }}>Apply</Text>
+                <Text style={{ fontWeight: "bold" }}>{hotel.name}</Text>
+                <Text>₹ {hotel.price}</Text>
               </Pressable>
-            </View>
+            );
+          })}
 
-            {/* Bill Info */}
-            {bill && (
-              <View style={{ backgroundColor: "#ddd", padding: 15, borderRadius: 5 }}>
-                <Text style={{ fontWeight: "bold" }}>Bill Summary:</Text>
-                <Text>Base: Rs {bill.baseAmount}</Text>
-                <Text>GST: Rs {Math.round(bill.gst)}</Text>
-                <Text>Discount: Rs {Math.round(bill.baseAmount - bill.discountedAmount)}</Text>
-                <Text style={{ fontSize: 18, marginTop: 10 }}>Total: Rs {Math.round(bill.finalAmount)}</Text>
-                
-                {bill.withinBudget === false && (
-                  <Text style={{ color: "red" }}>Budget exceeded!</Text>
-                )}
+          {!nightsData[currentNight - 1].couponApplied && couponCount < 3 && (
+            <>
+              <TextInput
+                placeholder="Coupon code"
+                value={couponInput}
+                onChangeText={setCouponInput}
+                style={{ borderWidth: 1, marginTop: 15, padding: 8 }}
+              />
+              <Pressable onPress={handleApplyCoupon}>
+                <Text style={{ color: "green" }}>Apply Coupon</Text>
+              </Pressable>
+            </>
+          )}
+
+          <Pressable
+            style={{ marginTop: 15 }}
+            disabled={!nightsData[currentNight - 1].hotel}
+            onPress={() => setCurrentNight((n) => n + 1)}
+          >
+            <Text style={{ fontWeight: "bold" }}>Next Night</Text>
+          </Pressable>
+
+          <Text style={{ marginTop: 10 }}>
+            Running Total: ₹{totalBill.toFixed(2)}
+          </Text>
+        </View>
+      )}
+
+      {currentNight > TOTAL_NIGHTS && (
+        <View style={{ padding: 20 }}>
+          <View style={{ backgroundColor: "white", padding: 15, borderRadius: 10 }}>
+            <Text style={{ fontSize: 22, fontWeight: "bold" }}>
+              Checkout Summary
+            </Text>
+
+            {nightsData.map((n) => (
+              <Text key={n.night}>
+                Night {n.night}: {n.hotel?.name} – ₹
+                {n.couponApplied ? n.discountedPrice : n.originalPrice}
+              </Text>
+            ))}
+
+            <Text style={{ marginTop: 10 }}>
+              Subtotal: ₹{subtotal.toFixed(2)}
+            </Text>
+            <Text>GST (18%): ₹{gst.toFixed(2)}</Text>
+            <Text style={{ fontSize: 18, fontWeight: "bold" }}>
+              Final Amount: ₹{finalAmount.toFixed(2)}
+            </Text>
+
+            {isBudgetExceeded && (
+              <View
+                style={{
+                  marginTop: 10,
+                  padding: 10,
+                  backgroundColor: "#FFE5E5",
+                  borderRadius: 5,
+                }}
+              >
+                <Text style={{ color: "red", fontWeight: "bold" }}>
+                  ⚠ Budget Exceeded
+                </Text>
+                <Text style={{ color: "red" }}>
+                  Budget: ₹{numericBudget} | Final: ₹{finalAmount.toFixed(2)}
+                </Text>
               </View>
             )}
           </View>
-        )}
-      </View>
+        </View>
+      )}
     </ScrollView>
   );
 }
