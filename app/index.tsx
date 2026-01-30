@@ -214,18 +214,29 @@ export default function Index() {
                   opacity: disabled ? 0.5 : 1,
                 }}
               >
-                <Image
-                  source={{
-                    uri: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800",
-                  }}
-                  style={{
-                    height: 140,
-                    borderRadius: 10,
-                    marginBottom: 10,
-                  }}
-                />
-                <Text style={{ fontWeight: "bold" }}>{hotel.name}</Text>
-                <Text>₹ {hotel.price} / night</Text>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Image
+                    source={{
+                      uri: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800",
+                    }}
+                    style={{
+                      width: 90,
+                      height: 90,
+                      borderRadius: 10,
+                      marginRight: 12,
+                    }}
+                  />
+
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: "bold", fontSize: 16 }}>
+                      {hotel.name}
+                    </Text>
+                    <Text style={{ marginTop: 4 }}>
+                      ₹ {hotel.price} / night
+                    </Text>
+                  </View>
+                </View>
+
               </Pressable>
             );
           })}
