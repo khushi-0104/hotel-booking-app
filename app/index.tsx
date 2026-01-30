@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { hotels } from "./src/data/hotels";
 
 const VALID_COUPON = "FRANTIGER2026";
@@ -29,26 +36,46 @@ export default function Index() {
       couponApplied: false,
     }))
   );
+  function startBooking() {
+    if (!budget || Number(budget) <= 0) {
+      alert("Please enter a valid budget");
+      return;
+    }
+
+    setCurrentNight(1);
+    setCouponCount(0);
+    setCouponInput("");
+    setTotalBill(0);
+
+    setNightsData(
+      Array.from({ length: TOTAL_NIGHTS }, (_, i) => ({
+        night: i + 1,
+        hotel: null,
+        originalPrice: 0,
+        discountedPrice: 0,
+        couponApplied: false,
+      }))
+    );
+  }
 
   function handleSelectHotel(hotel: any) {
-    if (currentNight === 0) return;
+    const idx = currentNight - 1;
 
     setNightsData((prev) => {
       const updated = [...prev];
-      const idx = currentNight - 1;
-      const prevHotel = updated[idx].hotel;
+      const prevNight = updated[idx];
 
-      if (prevHotel) {
-        const prevPrice = updated[idx].couponApplied
-          ? updated[idx].discountedPrice
-          : updated[idx].originalPrice;
+      if (prevNight.hotel) {
+        const prevPrice = prevNight.couponApplied
+          ? prevNight.discountedPrice
+          : prevNight.originalPrice;
         setTotalBill((b) => b - prevPrice);
       }
 
-      updated[idx].hotel = hotel;
-      updated[idx].originalPrice = hotel.price;
-      updated[idx].discountedPrice = hotel.price;
-      updated[idx].couponApplied = false;
+      prevNight.hotel = hotel;
+      prevNight.originalPrice = hotel.price;
+      prevNight.discountedPrice = hotel.price;
+      prevNight.couponApplied = false;
 
       setTotalBill((b) => b + hotel.price);
       return updated;
@@ -57,11 +84,15 @@ export default function Index() {
 
   function handleApplyCoupon() {
     if (couponCount >= 3) return;
-    if (couponInput !== VALID_COUPON) return;
+    if (couponInput !== VALID_COUPON) {
+      alert("Invalid coupon code");
+      return;
+    }
+
+    const idx = currentNight - 1;
 
     setNightsData((prev) => {
       const updated = [...prev];
-      const idx = currentNight - 1;
       const night = updated[idx];
 
       if (!night.hotel || night.couponApplied) return prev;
@@ -86,17 +117,22 @@ export default function Index() {
 
   return (
     <ScrollView style={{ backgroundColor: "#EEE" }}>
-      <View style={{ backgroundColor: "#000075", padding: 25 }}>
+      <View
+        style={{
+          backgroundColor: "#000075",
+          padding: 30,
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
+        }}
+      >
         <Text style={{ color: "white", fontSize: 28, fontWeight: "bold" }}>
           My Hotel App
         </Text>
-        <Text style={{ color: "white" }}>
-          MakeMyTrip-style Booking
-        </Text>
+        <Text style={{ color: "white" }}>Book smart. Pay less.</Text>
       </View>
 
       <View style={{ padding: 15 }}>
-        <View style={{ backgroundColor: "white", padding: 15, borderRadius: 10 }}>
+        <View style={{ backgroundColor: "white", padding: 15, borderRadius: 12 }}>
           <Text style={{ fontWeight: "bold" }}>Trip Details</Text>
 
           <TextInput
@@ -138,13 +174,13 @@ export default function Index() {
           />
 
           <Pressable
-            style={{ marginTop: 20, backgroundColor: "#008000", padding: 10 }}
-            onPress={() => {
-              setCurrentNight(1);
-              setTotalBill(0);
-              setCouponCount(0);
-              setCouponInput("");
+            style={{
+              marginTop: 20,
+              backgroundColor: "#008000",
+              padding: 12,
+              borderRadius: 10,
             }}
+            onPress={startBooking}
           >
             <Text style={{ color: "white", textAlign: "center" }}>
               SEARCH NOW
@@ -153,102 +189,175 @@ export default function Index() {
         </View>
       </View>
 
-      {currentNight > 0 && currentNight <= TOTAL_NIGHTS && (
+      {currentNight >= 1 && currentNight <= TOTAL_NIGHTS && (
         <View style={{ padding: 20 }}>
           <Text style={{ fontSize: 18, fontWeight: "bold" }}>
             Night {currentNight} / {TOTAL_NIGHTS}
           </Text>
 
-          {hotels.map((hotel) => {
+          {hotels.map((hotel, index) => {
             const prevHotel =
               currentNight > 1 ? nightsData[currentNight - 2].hotel : null;
-            const disabled = prevHotel?.id === hotel.id;
+            const disabled = prevHotel === hotel;
 
             return (
               <Pressable
-                key={hotel.id}
+                key={index}
                 disabled={disabled}
                 onPress={() => handleSelectHotel(hotel)}
                 style={{
                   backgroundColor: "white",
-                  padding: 12,
-                  borderRadius: 8,
-                  marginTop: 10,
-                  opacity: disabled ? 0.4 : 1,
+                  padding: 15,
+                  borderRadius: 12,
+                  marginTop: 12,
+                  elevation: 3,
+                  opacity: disabled ? 0.5 : 1,
                 }}
               >
+                <Image
+                  source={{
+                    uri: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800",
+                  }}
+                  style={{
+                    height: 140,
+                    borderRadius: 10,
+                    marginBottom: 10,
+                  }}
+                />
                 <Text style={{ fontWeight: "bold" }}>{hotel.name}</Text>
-                <Text>₹ {hotel.price}</Text>
+                <Text>₹ {hotel.price} / night</Text>
               </Pressable>
             );
           })}
 
-          {!nightsData[currentNight - 1].couponApplied && couponCount < 3 && (
-            <>
-              <TextInput
-                placeholder="Coupon code"
-                value={couponInput}
-                onChangeText={setCouponInput}
-                style={{ borderWidth: 1, marginTop: 15, padding: 8 }}
-              />
-              <Pressable onPress={handleApplyCoupon}>
-                <Text style={{ color: "green" }}>Apply Coupon</Text>
-              </Pressable>
-            </>
-          )}
+          {!nightsData[currentNight - 1].couponApplied &&
+            couponCount < 3 && (
+              <>
+                <TextInput
+                  placeholder="Coupon code"
+                  value={couponInput}
+                  onChangeText={setCouponInput}
+                  style={{
+                    borderWidth: 1,
+                    marginTop: 15,
+                    padding: 8,
+                    borderRadius: 8,
+                  }}
+                />
+                <Pressable
+                  onPress={handleApplyCoupon}
+                  style={{
+                    marginTop: 10,
+                    borderWidth: 1,
+                    borderColor: "#008000",
+                    padding: 10,
+                    borderRadius: 10,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#008000",
+                      textAlign: "center",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Apply Coupon
+                  </Text>
+                </Pressable>
+              </>
+            )}
 
           <Pressable
-            style={{ marginTop: 15 }}
             disabled={!nightsData[currentNight - 1].hotel}
             onPress={() => setCurrentNight((n) => n + 1)}
+            style={{
+              marginTop: 20,
+              backgroundColor: nightsData[currentNight - 1].hotel
+                ? "#000075"
+                : "#AAA",
+              paddingVertical: 14,
+              borderRadius: 12,
+            }}
           >
-            <Text style={{ fontWeight: "bold" }}>Next Night</Text>
+            <Text
+              style={{
+                color: "white",
+                textAlign: "center",
+                fontSize: 16,
+                fontWeight: "bold",
+              }}
+            >
+              {currentNight === TOTAL_NIGHTS
+                ? "Proceed to Checkout →"
+                : "Continue to Next Night →"}
+            </Text>
           </Pressable>
 
-          <Text style={{ marginTop: 10 }}>
-            Running Total: ₹{totalBill.toFixed(2)}
-          </Text>
+          <View
+            style={{
+              marginTop: 20,
+              padding: 18,
+              backgroundColor: "#F0F4FF",
+              borderRadius: 14,
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ fontSize: 14, color: "#555" }}>
+              Current Total
+            </Text>
+            <Text
+              style={{
+                fontSize: 22,
+                fontWeight: "bold",
+                color: "#000075",
+              }}
+            >
+              ₹ {totalBill.toFixed(2)}
+            </Text>
+          </View>
         </View>
       )}
 
-      {currentNight > TOTAL_NIGHTS && (
+      {currentNight === TOTAL_NIGHTS + 1 && (
         <View style={{ padding: 20 }}>
-          <View style={{ backgroundColor: "white", padding: 15, borderRadius: 10 }}>
+          <View
+            style={{
+              backgroundColor: "white",
+              padding: 20,
+              borderRadius: 15,
+              elevation: 4,
+            }}
+          >
             <Text style={{ fontSize: 22, fontWeight: "bold" }}>
               Checkout Summary
             </Text>
 
             {nightsData.map((n) => (
-              <Text key={n.night}>
-                Night {n.night}: {n.hotel?.name} – ₹
-                {n.couponApplied ? n.discountedPrice : n.originalPrice}
-              </Text>
+              <View key={n.night} style={{ marginTop: 8 }}>
+                <Text style={{ fontWeight: "bold" }}>
+                  Night {n.night}: {n.hotel?.name}
+                </Text>
+                <Text>
+                  ₹{" "}
+                  {n.couponApplied
+                    ? n.discountedPrice
+                    : n.originalPrice}
+                </Text>
+              </View>
             ))}
 
             <Text style={{ marginTop: 10 }}>
               Subtotal: ₹{subtotal.toFixed(2)}
             </Text>
             <Text>GST (18%): ₹{gst.toFixed(2)}</Text>
-            <Text style={{ fontSize: 18, fontWeight: "bold" }}>
+            <Text style={{ fontWeight: "bold", fontSize: 18 }}>
               Final Amount: ₹{finalAmount.toFixed(2)}
             </Text>
 
             {isBudgetExceeded && (
-              <View
-                style={{
-                  marginTop: 10,
-                  padding: 10,
-                  backgroundColor: "#FFE5E5",
-                  borderRadius: 5,
-                }}
-              >
-                <Text style={{ color: "red", fontWeight: "bold" }}>
-                  ⚠ Budget Exceeded
-                </Text>
-                <Text style={{ color: "red" }}>
-                  Budget: ₹{numericBudget} | Final: ₹{finalAmount.toFixed(2)}
-                </Text>
-              </View>
+              <Text style={{ color: "red", marginTop: 8 }}>
+                ⚠ Budget exceeded
+              </Text>
             )}
           </View>
         </View>
